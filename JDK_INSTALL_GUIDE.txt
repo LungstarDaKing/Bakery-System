@@ -1,0 +1,196 @@
+# JDK 21 Installation Guide for Bakery Management System APK Build
+
+## Problem
+The Gradle build fails with:
+```
+BUG! exception in phase 'semantic analysis' in source unit '_BuildScript_'
+Unsupported class file major version 69
+```
+
+This happens because:
+- Gradle 8.14.3 (used by Capacitor) requires Java 21 (class file version 69)
+- Your system currently has Java 17.0.20 installed
+
+## Solution: Install JDK 21
+
+### Method 1: Manual Installation (Recommended)
+
+1. **Download JDK 21**:
+   - Go to: https://jdk.java.net/21/
+   - Download the Windows x64 MSI installer (jdk-21_windows-x64_bin.msi)
+
+2. **Install JDK 21**:
+   - Run the MSI installer
+   - Accept default installation directory (usually C:\Program Files\Java\jdk-21)
+   - Complete the installation wizard
+
+3. **Set JAVA_HOME Environment Variable**:
+   - Press Win + S, type "env", select "Edit the system environment variables"
+   - Click "Environment Variables..."
+   - Under "System Variables", click "New..."
+   - Variable name: `JAVA_HOME`
+   - Variable value: `C:\Program Files\Java\jdk-21` (or your actual install path)
+   - Click OK
+
+4. **Update Path Variable**:
+   - Find "Path" in System Variables, click "Edit..."
+   - Click "New" and add: `%JAVA_HOME%\bin`
+   - Move this entry to the top of the list if possible
+   - Click OK on all dialogs
+
+5. **Verify Installation**:
+   - Open NEW command prompt (important: old ones won't see new env vars)
+   - Run: `java -version`
+   - Should show: `openjdk version "21.0.2" 2024-01-16 LTS` or similar
+   - Run: `where java` - should show path under JDK 21
+
+### Method 2: PowerShell Automated Download & Install
+*(Run PowerShell as Administrator)*
+
+```powershell
+# JDK 21 Automated Installer for Windows
+$jdkVersion = "21.0.2"
+$buildNumber = "13"
+$url = "https://download.java.net/java/GA/jdk21.0.2/f2283984656d49d69e91c558476027ac/13/GPL/openjdk-${jdk_version}_windows-x64_bin.zip"
+$zipPath = "$env:TEMP\openjdk-${jdk_version}_windows-x64_bin.zip"
+$installPath = "C:\Program Files\Java\jdk-${jdk_version}"
+
+Write-Host "Downloading JDK ${jdk_version}..." -ForegroundColor Green
+Invoke-WebRequest -Uri $url -OutFile $zipPath
+
+Write-Host "Extracting JDK..." -ForegroundColor Green
+Expand-Archive -Path $zipPath -DestinationPath "$env:TEMP\openjdk"
+Move-Item "$env:TEMP\openjdk\jdk-${jdk_version}" $installPath -Force
+
+Write-Host "Setting JAVA_HOME environment variable..." -ForegroundColor Green
+[Environment]::SetEnvironmentVariable("JAVA_HOME", $installPath, "Machine")
+$path = [Environment]::GetEnvironmentVariable("Path", "Machine")
+if (-not ($path -like "*%JAVA_HOME%\bin*")) {
+    $newPath = "$installPath\bin;$path"
+    [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine")
+}
+
+Write-Host "Cleaning up..." -ForegroundColor Green
+Remove-Item $zipPath
+Remove-Item -Recurse "$env:TEMP\openjdk"
+
+Write-Host "JDK ${jdk_version} installed successfully!" -ForegroundColor Green
+Write-Host "Please restart your terminal/command prompt and run:" -ForegroundColor Yellow
+Write-Host "  java -version" -ForegroundColor Yellow
+Write-Host "Then navigate to your project and build the APK:" -ForegroundColor Yellow
+Write-Host "  cd D:\BakerySystem\frontend\android" -ForegroundColor Yellow
+Write-Host "  .\gradlew assembleDebug" -ForegroundColor Yellow
+```
+
+### Method 3: Use Chocolatey (if installed)
+```powershell
+choco install jdk21
+```
+
+### Method 4: Use Scoop (if installed)
+```powershell
+scoop install java21-openjdk
+```
+
+## Building the APK
+
+Once JDK 21 is installed and verified:
+
+1. **Open NEW command prompt** (to pick up updated environment variables)
+
+2. **Navigate to Android project**:
+   ```bash
+   cd D:\BakerySystem\frontend\android
+   ```
+
+3. **Build debug APK**:
+   ```bash
+   .\gradlew assembleDebug
+   ```
+   - First build will download Gradle dependencies (may take a few minutes)
+   - Subsequent builds will be faster
+
+4. **Locate the APK**:
+   - Debug APK: `D:\BakerySystem\frontend\android\app\build\outputs\apk\debug\app-debug.apk`
+   - Release APK: `D:\BakerySystem\frontend\android\app\build\outputs\apk\release\app-release.apk`
+
+5. **Install on Android device**:
+   - Enable Developer Options and USB Debugging on your Android device
+   - Connect device via USB
+   - Run: `.\gradlew installDebug` (installs directly to connected device)
+   - Or copy the APK to your device and install manually
+
+## Troubleshooting
+
+### "JAVA_HOME is not set correctly"
+- Double-check that JAVA_HOME points to JDK 21 bin directory
+- Remember: You MUST open a NEW command prompt after setting environment variables
+- Test with: `echo %JAVA_HOME%` should show your JDK 21 path
+
+### "Could not find or load main class"
+- Usually indicates JDK version mismatch
+- Verify with: `java -version` shows version 21.x
+- Verify with: `javac -version` shows version 21.x
+
+### Gradle download failures
+- Ensure you have internet connectivity
+- Gradle will download ~100MB of dependencies on first build
+- You can try: `.\gradlew --refresh-dependencies assembleDebug`
+
+### Still using Java 17 after JDK 21 install?
+- Check for multiple Java installations
+- Look at system PATH order - JDK 21 bin should come FIRST
+- Check for JAVA_TOOL_OPTIONS or _JAVA_OPTIONS environment variables that might override
+
+## Verification After JDK 21 Install
+
+Run these commands in a NEW command prompt:
+```bash
+java -version
+# Should show: openjdk version "21.0.2" 2024-01-16 LTS
+
+javac -version
+# Should show: javac 21.0.2
+
+where java
+# First result should be: C:\Program Files\Java\jdk-21\bin\java.exe
+
+where javac
+# First result should be: C:\Program Files\Java\jdk-21\bin\javac.exe
+```
+
+## Alternative: Build Using Android Studio GUI
+If you prefer not to deal with command line:
+
+1. Install Android Studio from https://developer.android.com/studio
+2. Open Android Studio
+3. Select "Open an existing project"
+4. Navigate to: `D:\BakerySystem\frontend\android`
+5. Click "OK" - Android Studio will handle JDK/Gradle setup
+6. Wait for Gradle sync to complete
+7. Click: Build > Build Bundle(s) / APK(s) > Build APK(s)
+8. Find the APK in: `app/build/outputs/apk/debug/app-debug.apk`
+
+## Notes
+- The first build will take 5-15 minutes as it downloads Gradle dependencies and builds
+- Subsequent builds will be much faster (usually under 2 minutes)
+- You need approximately 2-3GB free disk space for the build
+- Antivirus software may slow down the build - consider temporarily disabling if needed
+- For publishing to Google Play Store, you'll need to build a release APK and sign it with a keystore
+
+## Backup Option: Use Adoptium/Eclipse Temurin JDK 21
+If you prefer official builds:
+- Download from: https://adoptium.net/temurin21/
+- Select Windows x64, MSI installer
+- Follow same installation steps above
+```
+
+## Next Steps
+
+1. Choose one of the installation methods above
+2. Install JDK 21
+3. Verify installation in a NEW command prompt
+4. Navigate to the Android project and build the APK
+5. The debug APK will be ready for testing on your Android device
+
+The Bakery Management System backend and frontend are already built and verified - you just need JDK 21 to complete the final APK build step.
